@@ -1,0 +1,17 @@
+{
+    "name": "tado-temp-notifier",
+    "version": "1.0.0",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+        "start": "tsc src/index.ts --outDir ./dist && node dist/index.js"
+    },
+    "dependencies": {
+        "axios": "^0.19.2",
+        "dotenv": "^8.2.0",
+        "typescript": "^3.9.5"
+    },
+    "devDependencies": {
+        "@types/node": "^14.0.14"
+    }
+}
