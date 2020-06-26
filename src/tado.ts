@@ -1,30 +1,6 @@
 import Axios from 'axios';
 const tadoClientSecret = 'wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc';
 
-export function getToken(): Promise<string> {
-    return new Promise((resolve) => {
-        Axios.post(
-            `https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=${process.env.TADO_USERNAME}&password=${process.env.TADO_PASSWORD}&client_secret=${tadoClientSecret}`
-        )
-            .then((response) => resolve(response.data.access_token))
-            .catch((error) => {
-                throw new Error('Error while authenticating with Tado: ' + error);
-            });
-    });
-}
-
-export function getHomeId(tadoToken: string): Promise<number> {
-    return new Promise((resolve) => {
-        Axios.get('https://my.tado.com/api/v1/me', {
-            headers: { Authorization: `Bearer ${tadoToken}` },
-        })
-            .then((response) => resolve(response.data.homeId))
-            .catch((error) => {
-                console.log('Error while getting Tado home ID:', error.response.data);
-            });
-    });
-}
-
 type HomeDetails = {
     id: number;
     name: string;
@@ -55,18 +31,6 @@ type HomeDetails = {
     consentGrantSkippable: boolean;
 };
 
-export function getHomeDetails(tadoToken: string, homeId: number): Promise<HomeDetails> {
-    return new Promise((resolve) => {
-        Axios.get(`https://my.tado.com/api/v2/homes/${homeId}`, {
-            headers: { Authorization: `Bearer ${tadoToken}` },
-        })
-            .then((response) => resolve(response.data))
-            .catch((error) => {
-                console.log('Error while getting Tado home details:', error.response.data);
-            });
-    });
-}
-
 type HomeZone = {
     id: number;
     name: string;
@@ -80,18 +44,6 @@ type HomeZone = {
     dazzleMode: { supported: boolean; enabled: boolean };
     openWindowDetection: { supported: boolean; enabled: boolean; timeoutInSeconds: number };
 };
-
-export function getHomeZones(tadoToken: string, homeId: number): Promise<Array<HomeZone>> {
-    return new Promise((resolve) => {
-        Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/zones`, {
-            headers: { Authorization: `Bearer ${tadoToken}` },
-        })
-            .then((response) => resolve(response.data))
-            .catch((error) => {
-                console.log('Error while getting Tado zones:', error.response.data);
-            });
-    });
-}
 
 type ZoneDetails = {
     tadoMode: 'HOME' | string;
@@ -147,22 +99,6 @@ type ZoneDetails = {
     };
 };
 
-export function getZoneDetails(
-    tadoToken: string,
-    homeId: number,
-    zoneId: number
-): Promise<ZoneDetails> {
-    return new Promise((resolve) => {
-        Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/zones/${zoneId}/state`, {
-            headers: { Authorization: `Bearer ${tadoToken}` },
-        })
-            .then((response) => resolve(response.data))
-            .catch((error) => {
-                console.log('Error while getting Tado zone details:', error.response.data);
-            });
-    });
-}
-
 type ExternalWeatherDetails = {
     solarIntensity: {
         type: 'PERCENTAGE';
@@ -183,6 +119,58 @@ type ExternalWeatherDetails = {
     };
 };
 
+export function getToken(): Promise<string> {
+    return new Promise((resolve) => {
+        Axios.post(
+            `https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=${process.env.TADO_USERNAME}&password=${process.env.TADO_PASSWORD}&client_secret=${tadoClientSecret}`
+        )
+            .then((response) => resolve(response.data.access_token))
+            .catch((error) => {
+                throw new Error('Error while authenticating with Tado: ' + error);
+            });
+    });
+}
+
+export function getHomeId(tadoToken: string): Promise<number> {
+    return new Promise((resolve) => {
+        Axios.get('https://my.tado.com/api/v1/me', {
+            headers: { Authorization: `Bearer ${tadoToken}` },
+        })
+            .then((response) => resolve(response.data.homeId))
+            .catch((error) => {
+                console.log('Error while getting Tado home ID:', error.response.data);
+            });
+    });
+}
+
+export function getHomeZones(tadoToken: string, homeId: number): Promise<Array<HomeZone>> {
+    return new Promise((resolve) => {
+        Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/zones`, {
+            headers: { Authorization: `Bearer ${tadoToken}` },
+        })
+            .then((response) => resolve(response.data))
+            .catch((error) => {
+                console.log('Error while getting Tado zones:', error.response.data);
+            });
+    });
+}
+
+export function getZoneDetails(
+    tadoToken: string,
+    homeId: number,
+    zoneId: number
+): Promise<ZoneDetails> {
+    return new Promise((resolve) => {
+        Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/zones/${zoneId}/state`, {
+            headers: { Authorization: `Bearer ${tadoToken}` },
+        })
+            .then((response) => resolve(response.data))
+            .catch((error) => {
+                console.log('Error while getting Tado zone details:', error.response.data);
+            });
+    });
+}
+
 export function getExternalWeatherDetails(
     tadoToken: string,
     homeId: number
@@ -193,7 +181,10 @@ export function getExternalWeatherDetails(
         })
             .then((response) => resolve(response.data))
             .catch((error) => {
-                console.log('Error while getting external weather details from Tado:', error.response.data);
+                console.log(
+                    'Error while getting external weather details from Tado:',
+                    error.response.data
+                );
             });
     });
 }

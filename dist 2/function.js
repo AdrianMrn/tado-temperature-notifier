@@ -36,45 +36,59 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 exports.__esModule = true;
+exports.boot = void 0;
 require('dotenv').config();
 var tado_1 = require("./tado");
-function boot() {
+var notifier_1 = require("./notifier");
+var datastore_1 = require("./datastore");
+function boot(_, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var tadoToken, tadoHomeId, tadoHomeDetails, tadoHomeZones, heatingZone, tadoZoneDetails, externalWeatherDetails, insideTemperature, outsideTemperature, isSunny, shouldOpenWindows, shouldCloseCurtains;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
+        var tadoToken, tadoHomeId, externalWeatherDetails, tadoHomeZones, heatingZone, tadoZoneDetails, insideTemperature, outsideTemperature, isSunny, shouldOpenWindows, shouldCloseCurtains, _a, oldShouldOpenWindows, oldShouldCloseCurtains;
+        return __generator(this, function (_b) {
+            switch (_b.label) {
                 case 0: return [4 /*yield*/, tado_1.getToken()];
                 case 1:
-                    tadoToken = _a.sent();
+                    tadoToken = _b.sent();
                     return [4 /*yield*/, tado_1.getHomeId(tadoToken)];
                 case 2:
-                    tadoHomeId = _a.sent();
-                    return [4 /*yield*/, tado_1.getHomeDetails(tadoToken, tadoHomeId)];
+                    tadoHomeId = _b.sent();
+                    return [4 /*yield*/, tado_1.getExternalWeatherDetails(tadoToken, tadoHomeId)];
                 case 3:
-                    tadoHomeDetails = _a.sent();
+                    externalWeatherDetails = _b.sent();
                     return [4 /*yield*/, tado_1.getHomeZones(tadoToken, tadoHomeId)];
                 case 4:
-                    tadoHomeZones = _a.sent();
+                    tadoHomeZones = _b.sent();
                     heatingZone = tadoHomeZones.find(function (zone) { return zone.type === 'HEATING'; });
                     if (!heatingZone) {
                         throw new Error('Could not find a Tado heating zone');
                     }
                     return [4 /*yield*/, tado_1.getZoneDetails(tadoToken, tadoHomeId, heatingZone.id)];
                 case 5:
-                    tadoZoneDetails = _a.sent();
-                    return [4 /*yield*/, tado_1.getExternalWeatherDetails(tadoToken, tadoHomeId)];
-                case 6:
-                    externalWeatherDetails = _a.sent();
+                    tadoZoneDetails = _b.sent();
                     insideTemperature = tadoZoneDetails.sensorDataPoints.insideTemperature.celsius;
                     outsideTemperature = externalWeatherDetails.outsideTemperature.celsius;
-                    isSunny = externalWeatherDetails.weatherState.value === 'SUN' &&
-                        externalWeatherDetails.solarIntensity.percentage > 50;
+                    isSunny = externalWeatherDetails.weatherState.value === 'SUN' && externalWeatherDetails.solarIntensity.percentage > 50;
                     shouldOpenWindows = outsideTemperature < insideTemperature;
                     shouldCloseCurtains = isSunny;
-                    console.log({ outsideTemperature: outsideTemperature, insideTemperature: insideTemperature, shouldOpenWindows: shouldOpenWindows, shouldCloseCurtains: shouldCloseCurtains });
+                    return [4 /*yield*/, datastore_1.getOldValues()];
+                case 6:
+                    _a = _b.sent(), oldShouldOpenWindows = _a.oldShouldOpenWindows, oldShouldCloseCurtains = _a.oldShouldCloseCurtains;
+                    if (oldShouldOpenWindows !== shouldOpenWindows) {
+                        notifier_1.sendMail({
+                            subject: (shouldOpenWindows ? 'Open' : 'Close') + " the windows!",
+                            text: "\n                Outside temperature: " + outsideTemperature + "\n\n                Inside temperature: " + insideTemperature + "\n            "
+                        });
+                    }
+                    if (oldShouldCloseCurtains !== shouldCloseCurtains) {
+                        notifier_1.sendMail({
+                            subject: (shouldCloseCurtains ? 'Close' : 'Open') + " the curtains!",
+                            text: "\n                Outside temperature: " + outsideTemperature + "\n\n                Inside temperature: " + insideTemperature + "\n            "
+                        });
+                    }
+                    res.send(200);
                     return [2 /*return*/];
             }
         });
     });
 }
-boot();
+exports.boot = boot;
