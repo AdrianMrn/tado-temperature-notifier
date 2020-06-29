@@ -48,7 +48,6 @@ export async function boot(_: any, res: any) {
             <p>Outside temperature: ${outsideTemperature}</p>
             <p>Inside temperature: ${insideTemperature}</p>
             <p>Current weather state: ${weatherState}</p>
-            <p>Sun intensity: ${solarIntensity}</p>
         `;
 
         sendMail({ subject, text: html, html });
@@ -66,6 +65,5 @@ export async function boot(_: any, res: any) {
         outsideTemperature,
         insideTemperature,
         weatherState,
-        solarIntensity,
     });
 }
