@@ -1,15 +1,17 @@
 require('dotenv').config();
 import { getToken, getHomeId, getHomeZones, getZoneDetails, getExternalWeatherDetails } from './tado';
 import { sendMail } from './notifier';
-import { getOldValues } from './datastore';
+import { getOldValues, writeNewValues } from './datastore';
+
+console.log('cold boot');
 
 export async function boot(_: any, res: any) {
-    // TODO: write console.log statements pretty much everywhere to keep track of function
+    console.log('Starting up function');
+
     const tadoToken = await getToken();
     const tadoHomeId = await getHomeId(tadoToken);
 
-    // TODO: use Promise.all() (?) instead of awaits where we don't need to wait for another request
-
+    // TODO: use Promise.all() (?) instead of awaits where we don't need to wait for another request (getting the inside temperature doesn't need to wait for the outside temperature)
     const externalWeatherDetails = await getExternalWeatherDetails(tadoToken, tadoHomeId);
 
     const tadoHomeZones = await getHomeZones(tadoToken, tadoHomeId);
@@ -23,34 +25,48 @@ export async function boot(_: any, res: any) {
 
     const insideTemperature = tadoZoneDetails.sensorDataPoints.insideTemperature.celsius;
     const outsideTemperature = externalWeatherDetails.outsideTemperature.celsius;
-    const isSunny =
-        externalWeatherDetails.weatherState.value === 'SUN' && externalWeatherDetails.solarIntensity.percentage > 50; // TODO: experiment with this value;
+    const solarIntensity = externalWeatherDetails.solarIntensity.percentage;
+    const weatherState = externalWeatherDetails.weatherState.value;
+    const isSunny = weatherState === 'SUN' && solarIntensity > 50; // TODO: experiment with this value;
 
     const shouldOpenWindows = outsideTemperature < insideTemperature;
     const shouldCloseCurtains = isSunny;
 
-    const { oldShouldOpenWindows, oldShouldCloseCurtains } = await getOldValues();
+    const { dbIsEmpty, oldShouldOpenWindows, oldShouldCloseCurtains } = await getOldValues();
 
-    if (oldShouldOpenWindows !== shouldOpenWindows) {
-        sendMail({
-            subject: `${shouldOpenWindows ? 'Open' : 'Close'} the windows!`,
-            text: `
-                Outside temperature: ${outsideTemperature}\n
-                Inside temperature: ${insideTemperature}
-            `,
-        });
+    if (oldShouldOpenWindows !== shouldOpenWindows || oldShouldCloseCurtains !== shouldCloseCurtains) {
+        const subject = `
+            ${shouldOpenWindows ? 'Open' : 'Close'} the windows,
+            ${shouldCloseCurtains ? 'close' : 'open'} the curtains!
+        `;
+
+        const html = `
+            <h3>
+                If it's too hot,
+                ${shouldOpenWindows ? 'open' : 'close'} the windows,
+                ${shouldCloseCurtains ? 'close' : 'open'} the curtains!
+            </h3>
+            <p>Outside temperature: ${outsideTemperature}</p>
+            <p>Inside temperature: ${insideTemperature}</p>
+            <p>Current weather state: ${weatherState}</p>
+            <p>Sun intensity: ${solarIntensity}</p>
+        `;
+
+        sendMail({ subject, text: html, html });
     }
 
-    if (oldShouldCloseCurtains !== shouldCloseCurtains) {
-        sendMail({
-            subject: `${shouldCloseCurtains ? 'Close' : 'Open'} the curtains!`,
-            text: `
-                Outside temperature: ${outsideTemperature}\n
-                Inside temperature: ${insideTemperature}
-            `,
-        });
+    if (dbIsEmpty || oldShouldOpenWindows !== shouldOpenWindows || oldShouldCloseCurtains !== shouldCloseCurtains) {
+        await writeNewValues({ shouldOpenWindows, shouldCloseCurtains });
     }
 
-    // TODO: send JSON response with old & new values & temperatures
-    res.send(200);
+    res.send({
+        oldShouldOpenWindows,
+        shouldOpenWindows,
+        oldShouldCloseCurtains,
+        shouldCloseCurtains,
+        outsideTemperature,
+        insideTemperature,
+        weatherState,
+        solarIntensity,
+    });
 }

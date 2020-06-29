@@ -41,12 +41,15 @@ require('dotenv').config();
 var tado_1 = require("./tado");
 var notifier_1 = require("./notifier");
 var datastore_1 = require("./datastore");
+console.log('cold boot');
 function boot(_, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var tadoToken, tadoHomeId, externalWeatherDetails, tadoHomeZones, heatingZone, tadoZoneDetails, insideTemperature, outsideTemperature, isSunny, shouldOpenWindows, shouldCloseCurtains, _a, oldShouldOpenWindows, oldShouldCloseCurtains;
+        var tadoToken, tadoHomeId, externalWeatherDetails, tadoHomeZones, heatingZone, tadoZoneDetails, insideTemperature, outsideTemperature, solarIntensity, weatherState, isSunny, shouldOpenWindows, shouldCloseCurtains, _a, dbIsEmpty, oldShouldOpenWindows, oldShouldCloseCurtains, subject, html;
         return __generator(this, function (_b) {
             switch (_b.label) {
-                case 0: return [4 /*yield*/, tado_1.getToken()];
+                case 0:
+                    console.log('Starting up function');
+                    return [4 /*yield*/, tado_1.getToken()];
                 case 1:
                     tadoToken = _b.sent();
                     return [4 /*yield*/, tado_1.getHomeId(tadoToken)];
@@ -67,25 +70,35 @@ function boot(_, res) {
                     tadoZoneDetails = _b.sent();
                     insideTemperature = tadoZoneDetails.sensorDataPoints.insideTemperature.celsius;
                     outsideTemperature = externalWeatherDetails.outsideTemperature.celsius;
-                    isSunny = externalWeatherDetails.weatherState.value === 'SUN' && externalWeatherDetails.solarIntensity.percentage > 50;
+                    solarIntensity = externalWeatherDetails.solarIntensity.percentage;
+                    weatherState = externalWeatherDetails.weatherState.value;
+                    isSunny = weatherState === 'SUN' && solarIntensity > 50;
                     shouldOpenWindows = outsideTemperature < insideTemperature;
                     shouldCloseCurtains = isSunny;
                     return [4 /*yield*/, datastore_1.getOldValues()];
                 case 6:
-                    _a = _b.sent(), oldShouldOpenWindows = _a.oldShouldOpenWindows, oldShouldCloseCurtains = _a.oldShouldCloseCurtains;
-                    if (oldShouldOpenWindows !== shouldOpenWindows) {
-                        notifier_1.sendMail({
-                            subject: (shouldOpenWindows ? 'Open' : 'Close') + " the windows!",
-                            text: "\n                Outside temperature: " + outsideTemperature + "\n\n                Inside temperature: " + insideTemperature + "\n            "
-                        });
+                    _a = _b.sent(), dbIsEmpty = _a.dbIsEmpty, oldShouldOpenWindows = _a.oldShouldOpenWindows, oldShouldCloseCurtains = _a.oldShouldCloseCurtains;
+                    if (oldShouldOpenWindows !== shouldOpenWindows || oldShouldCloseCurtains !== shouldCloseCurtains) {
+                        subject = "\n            " + (shouldOpenWindows ? 'Open' : 'Close') + " the windows,\n            " + (shouldCloseCurtains ? 'close' : 'open') + " the curtains!\n        ";
+                        html = "\n            <h3>\n                " + (shouldOpenWindows ? 'Open' : 'Close') + " the windows,\n                " + (shouldCloseCurtains ? 'close' : 'open') + " the curtains!\n            </h3>\n            <br/>\n            <p>Outside temperature: " + outsideTemperature + "</p>\n            <p>Inside temperature: " + insideTemperature + "</p>\n            <p>Current weather state: " + weatherState + "</p>\n            <p>Sun intensity: " + solarIntensity + "</p>\n        ";
+                        notifier_1.sendMail({ subject: subject, text: html, html: html });
                     }
-                    if (oldShouldCloseCurtains !== shouldCloseCurtains) {
-                        notifier_1.sendMail({
-                            subject: (shouldCloseCurtains ? 'Close' : 'Open') + " the curtains!",
-                            text: "\n                Outside temperature: " + outsideTemperature + "\n\n                Inside temperature: " + insideTemperature + "\n            "
-                        });
-                    }
-                    res.send(200);
+                    if (!(dbIsEmpty || oldShouldOpenWindows !== shouldOpenWindows || oldShouldCloseCurtains !== shouldCloseCurtains)) return [3 /*break*/, 8];
+                    return [4 /*yield*/, datastore_1.writeNewValues({ shouldOpenWindows: shouldOpenWindows, shouldCloseCurtains: shouldCloseCurtains })];
+                case 7:
+                    _b.sent();
+                    _b.label = 8;
+                case 8:
+                    res.send({
+                        oldShouldOpenWindows: oldShouldOpenWindows,
+                        shouldOpenWindows: shouldOpenWindows,
+                        oldShouldCloseCurtains: oldShouldCloseCurtains,
+                        shouldCloseCurtains: shouldCloseCurtains,
+                        outsideTemperature: outsideTemperature,
+                        insideTemperature: insideTemperature,
+                        weatherState: weatherState,
+                        solarIntensity: solarIntensity
+                    });
                     return [2 /*return*/];
             }
         });

@@ -1,6 +1,7 @@
 import Axios from 'axios';
 const tadoClientSecret = 'wZaRN7rpjn3FoNyF5IFuxg9uMzYJcvOoQ8QWiIqS3hfk6gLhVlG57j5YNoZL2Rtc';
 
+// Currently not used; API endpoint: https://my.tado.com/api/v2/homes/${homeId}
 type HomeDetails = {
     id: number;
     name: string;
@@ -119,72 +120,105 @@ type ExternalWeatherDetails = {
     };
 };
 
+// There's no point in caching the API token, because it expires every 10 minutes
 export function getToken(): Promise<string> {
+    console.log('running getToken');
+
     return new Promise((resolve) => {
         Axios.post(
             `https://auth.tado.com/oauth/token?client_id=tado-web-app&grant_type=password&scope=home.user&username=${process.env.TADO_USERNAME}&password=${process.env.TADO_PASSWORD}&client_secret=${tadoClientSecret}`
         )
-            .then((response) => resolve(response.data.access_token))
+            .then((response) => {
+                console.log('getToken received response:', response);
+                return resolve(response.data.access_token);
+            })
             .catch((error) => {
-                throw new Error('Error while authenticating with Tado: ' + error);
+                throw new Error('getToken error: ' + error.response.data);
             });
     });
 }
 
+let cachedHomeIds: { [tadoToken: string]: number } = {};
 export function getHomeId(tadoToken: string): Promise<number> {
+    console.log('running getHomeId');
+
     return new Promise((resolve) => {
+        if (cachedHomeIds[tadoToken]) {
+            return resolve(cachedHomeIds[tadoToken]);
+        }
+
         Axios.get('https://my.tado.com/api/v1/me', {
             headers: { Authorization: `Bearer ${tadoToken}` },
         })
-            .then((response) => resolve(response.data.homeId))
+            .then((response) => {
+                console.log('getHomeId received response:', response);
+
+                cachedHomeIds[tadoToken] = response.data.homeId;
+                return resolve(response.data.homeId);
+            })
             .catch((error) => {
-                console.log('Error while getting Tado home ID:', error.response.data);
+                throw new Error('getHomeId error: ' + error.response.data);
             });
     });
 }
 
+let cachedHomeZones: { [homeId: number]: Array<HomeZone> } = {};
 export function getHomeZones(tadoToken: string, homeId: number): Promise<Array<HomeZone>> {
+    console.log('running getHomeZones');
+
     return new Promise((resolve) => {
+        if (cachedHomeZones[homeId]) {
+            return resolve(cachedHomeZones[homeId]);
+        }
+
         Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/zones`, {
             headers: { Authorization: `Bearer ${tadoToken}` },
         })
-            .then((response) => resolve(response.data))
+            .then((response) => {
+                console.log('getHomeZones received response:', response);
+
+                cachedHomeZones[homeId] = response.data;
+                return resolve(response.data);
+            })
             .catch((error) => {
-                console.log('Error while getting Tado zones:', error.response.data);
+                throw new Error('getHomeZones error: ' + error.response.data);
             });
     });
 }
 
-export function getZoneDetails(
-    tadoToken: string,
-    homeId: number,
-    zoneId: number
-): Promise<ZoneDetails> {
+// Not caching this data because it needs to be up to date
+export function getZoneDetails(tadoToken: string, homeId: number, zoneId: number): Promise<ZoneDetails> {
+    console.log('running getZoneDetails');
+
     return new Promise((resolve) => {
         Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/zones/${zoneId}/state`, {
             headers: { Authorization: `Bearer ${tadoToken}` },
         })
-            .then((response) => resolve(response.data))
+            .then((response) => {
+                console.log('getZoneDetails received response:', response);
+
+                return resolve(response.data);
+            })
             .catch((error) => {
-                console.log('Error while getting Tado zone details:', error.response.data);
+                throw new Error('getZoneDetails error: ' + error.response.data);
             });
     });
 }
 
-export function getExternalWeatherDetails(
-    tadoToken: string,
-    homeId: number
-): Promise<ExternalWeatherDetails> {
+// Not caching this data because it needs to be up to date
+export function getExternalWeatherDetails(tadoToken: string, homeId: number): Promise<ExternalWeatherDetails> {
+    console.log('running getExternalWeatherDetails');
+
     return new Promise((resolve) => {
         Axios.get(`https://my.tado.com/api/v2/homes/${homeId}/weather`, {
             headers: { Authorization: `Bearer ${tadoToken}` },
         })
-            .then((response) => resolve(response.data))
+            .then((response) => {
+                console.log('getExternalWeatherDetails received response:', response);
+                return resolve(response.data);
+            })
             .catch((error) => {
-                console.log(
-                    'Error while getting external weather details from Tado:',
-                    error.response.data
-                );
+                throw new Error('getExternalWeatherDetails error: ' + error.response.data);
             });
     });
 }
