@@ -24,13 +24,12 @@ export async function boot(_: any, res: any) {
     const tadoZoneDetails = await getZoneDetails(tadoToken, tadoHomeId, heatingZone.id);
 
     const insideTemperature = tadoZoneDetails.sensorDataPoints.insideTemperature.celsius;
+
     const outsideTemperature = externalWeatherDetails.outsideTemperature.celsius;
-    const solarIntensity = externalWeatherDetails.solarIntensity.percentage;
     const weatherState = externalWeatherDetails.weatherState.value;
-    const isSunny = weatherState === 'SUN' && solarIntensity > 50; // TODO: experiment with this value;
 
     const shouldOpenWindows = outsideTemperature < insideTemperature;
-    const shouldCloseCurtains = isSunny;
+    const shouldCloseCurtains = weatherState === 'SUN';
 
     const { dbIsEmpty, oldShouldOpenWindows, oldShouldCloseCurtains } = await getOldValues();
 
