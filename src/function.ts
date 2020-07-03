@@ -4,9 +4,13 @@ import { sendMail } from './notifier';
 import { getOldValues, writeNewValues } from './datastore';
 
 console.log('cold boot');
+let amountOfWarmBoots = 0;
 
 export async function boot(_: any, res: any) {
     console.log('Starting up function');
+
+    amountOfWarmBoots++;
+    console.log('amount of consecutive warm boots:', amountOfWarmBoots);
 
     const tadoToken = await getToken();
     const tadoHomeId = await getHomeId(tadoToken);

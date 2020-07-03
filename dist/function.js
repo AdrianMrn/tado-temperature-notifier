@@ -42,13 +42,16 @@ var tado_1 = require("./tado");
 var notifier_1 = require("./notifier");
 var datastore_1 = require("./datastore");
 console.log('cold boot');
+var amountOfWarmBoots = 0;
 function boot(_, res) {
     return __awaiter(this, void 0, void 0, function () {
-        var tadoToken, tadoHomeId, externalWeatherDetails, tadoHomeZones, heatingZone, tadoZoneDetails, insideTemperature, outsideTemperature, solarIntensity, weatherState, isSunny, shouldOpenWindows, shouldCloseCurtains, _a, dbIsEmpty, oldShouldOpenWindows, oldShouldCloseCurtains, subject, html;
+        var tadoToken, tadoHomeId, externalWeatherDetails, tadoHomeZones, heatingZone, tadoZoneDetails, insideTemperature, outsideTemperature, weatherState, shouldOpenWindows, shouldCloseCurtains, _a, dbIsEmpty, oldShouldOpenWindows, oldShouldCloseCurtains, subject, html;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
                     console.log('Starting up function');
+                    amountOfWarmBoots++;
+                    console.log('amount of consecutive warm boots:', amountOfWarmBoots);
                     return [4 /*yield*/, tado_1.getToken()];
                 case 1:
                     tadoToken = _b.sent();
@@ -70,17 +73,15 @@ function boot(_, res) {
                     tadoZoneDetails = _b.sent();
                     insideTemperature = tadoZoneDetails.sensorDataPoints.insideTemperature.celsius;
                     outsideTemperature = externalWeatherDetails.outsideTemperature.celsius;
-                    solarIntensity = externalWeatherDetails.solarIntensity.percentage;
                     weatherState = externalWeatherDetails.weatherState.value;
-                    isSunny = weatherState === 'SUN' && solarIntensity > 50;
                     shouldOpenWindows = outsideTemperature < insideTemperature;
-                    shouldCloseCurtains = isSunny;
+                    shouldCloseCurtains = weatherState === 'SUN';
                     return [4 /*yield*/, datastore_1.getOldValues()];
                 case 6:
                     _a = _b.sent(), dbIsEmpty = _a.dbIsEmpty, oldShouldOpenWindows = _a.oldShouldOpenWindows, oldShouldCloseCurtains = _a.oldShouldCloseCurtains;
                     if (oldShouldOpenWindows !== shouldOpenWindows || oldShouldCloseCurtains !== shouldCloseCurtains) {
                         subject = "\n            " + (shouldOpenWindows ? 'Open' : 'Close') + " the windows,\n            " + (shouldCloseCurtains ? 'close' : 'open') + " the curtains!\n        ";
-                        html = "\n            <h3>\n                " + (shouldOpenWindows ? 'Open' : 'Close') + " the windows,\n                " + (shouldCloseCurtains ? 'close' : 'open') + " the curtains!\n            </h3>\n            <br/>\n            <p>Outside temperature: " + outsideTemperature + "</p>\n            <p>Inside temperature: " + insideTemperature + "</p>\n            <p>Current weather state: " + weatherState + "</p>\n            <p>Sun intensity: " + solarIntensity + "</p>\n        ";
+                        html = "\n            <h3>\n                If it's too hot,\n                " + (shouldOpenWindows ? 'open' : 'close') + " the windows,\n                " + (shouldCloseCurtains ? 'close' : 'open') + " the curtains!\n            </h3>\n            <p>Outside temperature: " + outsideTemperature + "</p>\n            <p>Inside temperature: " + insideTemperature + "</p>\n            <p>Current weather state: " + weatherState + "</p>\n        ";
                         notifier_1.sendMail({ subject: subject, text: html, html: html });
                     }
                     if (!(dbIsEmpty || oldShouldOpenWindows !== shouldOpenWindows || oldShouldCloseCurtains !== shouldCloseCurtains)) return [3 /*break*/, 8];
@@ -96,8 +97,7 @@ function boot(_, res) {
                         shouldCloseCurtains: shouldCloseCurtains,
                         outsideTemperature: outsideTemperature,
                         insideTemperature: insideTemperature,
-                        weatherState: weatherState,
-                        solarIntensity: solarIntensity
+                        weatherState: weatherState
                     });
                     return [2 /*return*/];
             }

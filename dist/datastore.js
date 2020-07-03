@@ -9,7 +9,7 @@ function getOldValues() {
     return new Promise(function (resolve) {
         /* We're caching the values in the global scope. If they exist, it means we're in a hot load and we can use those values.
         If they don't exist, it means we're in a cold boot and we need to get the values from the DB. */
-        if (cachedOldShouldOpenWindows !== undefined && cachedOldShouldOpenWindows !== undefined) {
+        if (cachedOldShouldOpenWindows !== undefined && cachedOldShouldCloseCurtains !== undefined) {
             console.log('getOldValues: using cached values');
             return resolve({
                 dbIsEmpty: false,
